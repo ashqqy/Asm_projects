@@ -5,6 +5,7 @@ org 100h
 ;-------------------------------
 	
 VIDEOSEG   equ 0b800h
+CMDPARAMS  equ 0082h
 SCREENLEN  equ 80*2
 FRAMESTYLE equ offset frame
 COLOR 	   equ 10001100b	; Red (blink)
@@ -29,7 +30,7 @@ Main:
 ;Entry: AH - color,
 ;	DI - coords,
 ;	ES - videoseg (0b800h),
-;	SI - framestyle array,
+;	SI - framestyle array ptr,
 ; 
 ;Destr: AL - symbol, 
 ;	CX - counter & line lenght
@@ -49,12 +50,13 @@ DrawLine 	proc
 	ret
 		endp
 ;-------------------------------
-;Entry:	AH - color
+;Entry:	AH - color,
+;	DI - coords (screenlen * y + x * 2),
+;	ES - videoseg (0b800h),
+;	SI - framestyle array ptr
 ;
 ;Destr: CX - counter,
-;	DI - coords (screenlen * y + x * 2),
-;	DL, 
-;	AH (helps change coords)
+;	AL - symbol
 ;-------------------------------
 DrawFrame	proc
 	

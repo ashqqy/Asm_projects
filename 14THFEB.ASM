@@ -11,20 +11,115 @@ FRAMESTYLE equ offset frame
 COLOR 	   equ 10001100b	; Red (blink)
 FRAMELEN   equ 20
 FRAMEHIGH  equ 5
-X	   equ 10
-Y 	   equ 5
+X	   equ 20
+Y 	   equ 10
 
-Main:
-	mov AX, VIDEOSEG
-	mov ES, AX
+Main:		call ClearScreen
+		
+		mov AX, VIDEOSEG
+		mov ES, AX
+		
+		mov BX, CMDPARAMS
+		call GetCmdArgs
 
-	mov AH, COLOR
-	mov SI, FRAMESTYLE
-	mov DI, SCREENLEN*Y+X*2
+		mov SI, FRAMESTYLE
+		mov DI, SCREENLEN*Y+X*2
+		call DrawFrame
 
-	call DrawFrame
+		jmp Exit
 
-	jmp Exit
+;-------------------------------
+;Entry: None
+;Destr: AH, DX
+;-------------------------------
+ClearScreen	proc
+
+		mov AH, 09h
+		mov DX, offset clear_screen_arr	
+		int 21h
+		ret
+		endp
+
+;-------------------------------
+;Entry:
+;Destr:
+;-------------------------------
+GetDecCmd	proc
+		ret
+		endp
+
+;-------------------------------
+;Reads hex number before space (1 or 2 digit) from cmd params
+; (in the beginning spaces are not skipped)
+;Entry: BX - cmdparams (0082h)
+;Destr: CL - read (return hex)
+;-------------------------------	
+
+AsciiToHex	proc
+		
+		cmp CL, '9'
+
+		jbe IfDigitBody
+		ja  IfLetterBody
+
+IfDigitBody: 	sub CL, '0'
+		ret
+
+IfLetterBody:   sub CL, 'a' - 10
+		ret
+		
+		endp
+
+;-------------------------------
+
+GetHexCmd	proc
+		
+		mov CX, [BX]		; read two character at once
+
+		inc BX			; skip space if no 1 symb
+
+		cmp CL, ' '
+		je GetHexEnd
+		call AsciiToHex
+
+		inc BX			; skip space after 1 symb
+		xchg CL, CH
+
+		cmp CL, ' '
+		je GetHexEnd 
+		call AsciiToHex
+
+		inc BX			; skip space after 2 symb
+
+		shl CH, 4		; CH = CH * f + CL
+		or CH, CL
+		
+GetHexEnd:	ret
+		endp	
+
+;-------------------------------
+;Entry:	BX - cmdparams (0082h),
+;Destr: CX - for GetDec/Hex,
+;	AH - color 
+;	DL - frame len,
+;	DH - frame high,
+;-------------------------------
+GetCmdArgs	proc
+
+		xor DX, DX		; DX = 0
+		xor AX, AX			
+
+		call GetHexCmd
+		mov DL, CH		; DL = frame lenght
+
+		call GetHexCmd
+		mov DH, CH		; DH = frame high
+
+		call GetHexCmd
+		mov AH, CH		; AH = color
+
+		ret
+		endp
 
 ;-------------------------------
 ;Entry: AH - color,
@@ -94,7 +189,7 @@ Exit:	mov AX, 4c00h
 	int 21h
 
 ;-------------------------------
-
-frame 	db '101202303'
+clear_screen_arr db 80*26 dup (' '), '$'
+frame 	    	 db '101202303'
 
 end 	Main				

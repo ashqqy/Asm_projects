@@ -9,22 +9,30 @@ CMDPARAMS  equ 0082h
 SCREENLEN  equ 80*2
 FRAMESTYLE equ offset frame
 COLOR 	   equ 10001100b	; Red (blink)
-FRAMELEN   equ 20
+FRAMELEN   equ 47
 FRAMEHIGH  equ 5
-X	   equ 20
-Y 	   equ 10
+X	   equ 16
+Y 	   equ 12
 
 Main:		call ClearScreen
 		
-		mov AX, VIDEOSEG
-		mov ES, AX
-		
 		mov BX, CMDPARAMS
-		call GetCmdArgs
+		call GetCmdArgs		;AH - color, 
+					;DH - frame high, 
+					;DL - frame len
+
+		mov BX, VIDEOSEG
+		mov ES, BX
 
 		mov SI, FRAMESTYLE
 		mov DI, SCREENLEN*Y+X*2
 		call DrawFrame
+		
+		mov CX, 43
+		mov DI, SCREENLEN*Y+X*2
+		add DI, FRAMEHIGH/2 * (SCREENLEN + 1) + 2
+		mov SI, offset text
+		call DrawText
 
 		jmp Exit
 
@@ -41,6 +49,7 @@ ClearScreen	proc
 		endp
 
 ;-------------------------------
+;In progress...
 ;Entry:
 ;Destr:
 ;-------------------------------
@@ -132,18 +141,19 @@ GetCmdArgs	proc
 ;-------------------------------
 DrawLine 	proc
 
-	lodsb			; al = ds:[si++]
-	stosw			; es:[di] = ax, di+=2
+		lodsb			; al = ds:[si++]
+		stosw			; es:[di] = ax, di+=2
 
-	mov CX, FRAMELEN - 2
-	lodsb
-	rep stosw
+		mov CX, FRAMELEN - 2
+		lodsb
+		rep stosw
 	
-	lodsb
-	stosw
+		lodsb
+		stosw
 
-	ret
+		ret
 		endp
+
 ;-------------------------------
 ;Entry:	AH - color,
 ;	DI - coords (screenlen * y + x * 2),
@@ -155,41 +165,63 @@ DrawLine 	proc
 ;-------------------------------
 DrawFrame	proc
 	
-	call DrawLine
-	sub DI, FRAMELEN * 2
-	add DI, SCREENLEN
+		call DrawLine
+		sub DI, FRAMELEN * 2
+		add DI, SCREENLEN
 	
-	mov CX, FRAMEHIGH - 2
+		mov CX, FRAMEHIGH - 2
+
 StartFrameBody:
-	cmp CX, 0	
-	je EndFrameBody
+		cmp CX, 0	
+		je EndFrameBody
 		
-	push CX
-	call DrawLine
-	pop CX
-	dec CX
+		push CX
+		call DrawLine
+		pop CX
+		dec CX
 
-	sub SI, 3
+		sub SI, 3
 
-	sub DI, FRAMELEN * 2
-	add DI, SCREENLEN
+		sub DI, FRAMELEN * 2
+		add DI, SCREENLEN
 
-	jmp StartFrameBody
-EndFrameBody:
-	
-	add SI, 3
-	call DrawLine
+		jmp StartFrameBody
 
-	ret
+EndFrameBody:	
+		add SI, 3
+		call DrawLine
+
+		ret
+		endp
+
+;-------------------------------
+; 
+;Entry:
+;Destr:
+;-------------------------------
+Drawtext	proc
+		
+StartText:
+		cmp CX, 0
+		je EndText
+		movsb
+		mov ES:[DI], AH
+		inc DI
+		dec CX
+		jmp StartText
+EndText:	
+		ret
 		endp
 
 ;-------------------------------
 
-Exit:	mov AX, 4c00h
-	int 21h
+Exit:		mov AX, 4c00h
+		int 21h
 
 ;-------------------------------
+
 clear_screen_arr db 80*26 dup (' '), '$'
-frame 	    	 db '101202303'
+frame 	    	 db 4, 3, 4, 3,  , 3, 4, 3, 4
+text		 db "I love you", 3, " Happy Valentine's day, my Dear!"
 
 end 	Main				
